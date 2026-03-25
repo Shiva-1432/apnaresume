@@ -1,3 +1,11 @@
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 name: Release Containers
 
 on:
@@ -5,10 +13,6 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
-
-permissions:
-  contents: read
-  packages: write
 
 jobs:
   publish-images:
