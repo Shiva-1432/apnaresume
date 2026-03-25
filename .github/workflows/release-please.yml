@@ -16,6 +16,9 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Run release-please
         id: release
         uses: google-github-actions/release-please-action@v4
