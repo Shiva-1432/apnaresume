@@ -24,6 +24,9 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# Test artifacts
+backend/coverage/
+
 # Private
 *.key
 *.pem
