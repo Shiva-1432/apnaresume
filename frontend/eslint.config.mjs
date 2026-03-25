@@ -1,15 +1,6 @@
-import nextPlugin from '@next/eslint-plugin-next';
-
+/** @type {import('eslint').Linter.Config[]} */
 export default [
   {
-    ignores: ['.next/**', 'node_modules/**', 'build/**', '.git/**', 'out/**']
+    ignores: ['node_modules', '.next'],
   },
-  {
-    plugins: {
-      '@next/next': nextPlugin
-    },
-    rules: {
-      ...nextPlugin.rules
-    }
-  }
 ];
