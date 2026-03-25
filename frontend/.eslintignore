@@ -1,0 +1,12 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+.env*
+*.config.js
+*.config.ts
+*.config.mjs
+public/
+coverage/
+.git/
