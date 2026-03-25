@@ -1,12 +1,12 @@
-export default [
-  {
-    ignores: ['node_modules/**', '.next/**', 'out/**', 'build/**'],
-  },
-  {
-    files: ['**/*.{js,jsx,ts,tsx}'],
-    languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
-    },
-  },
-];
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+
+export default defineConfig([
+  ...nextVitals,
+  globalIgnores([
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts"
+  ])
+]);
