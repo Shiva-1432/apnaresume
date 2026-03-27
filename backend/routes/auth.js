@@ -330,6 +330,7 @@ router.post('/login', loginLimiter, async (req, res) => {
   }
 });
 
+
 // LOGOUT endpoint (revoke current session)
 router.post('/logout', authenticateToken, async (req, res) => {
   try {
@@ -354,6 +355,28 @@ router.post('/logout', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Logout error:', error);
     return res.status(500).json({ error: 'Logout failed' });
+  }
+});
+
+// LOGOUT ALL endpoint (revoke all sessions)
+router.post('/logout-all', authenticateToken, async (req, res) => {
+  try {
+    if (!ensureDatabaseReady(res)) {
+      return;
+    }
+
+    const user = await User.findById(req.user.user_id);
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    user.sessions = [];
+    if (user.session_tokens) user.session_tokens = [];
+    await user.save();
+
+    res.json({ success: true, message: 'Logged out from all devices' });
+  } catch (error) {
+    res.status(500).json({ error: 'Logout failed' });
   }
 });
 
