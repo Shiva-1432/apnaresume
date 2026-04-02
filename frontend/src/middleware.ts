@@ -16,6 +16,9 @@ const isProtectedRoute = createRouteMatcher([
   '/admin(.*)',
 ]);
 
+// Admin role checks are intentionally handled in server components via assertAdmin()
+// to keep middleware fast and focused on auth gating only.
+
 export default clerkMiddleware(async (auth, req) => {
   const { userId } = await auth();
   const { pathname, search } = req.nextUrl;

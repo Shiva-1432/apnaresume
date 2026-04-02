@@ -19,7 +19,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
+  metadataBase: new URL("https://apnaresume.com"),
   title: {
     default: "ApnaResume | AI Resume Analyzer & ATS Score Checker",
     template: "%s | ApnaResume",

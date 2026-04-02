@@ -1,9 +1,24 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'FAQ | ApnaResume Intelligence',
-  description: 'Get quick answers about ATS scoring, usage limits, credits, and resume optimization.',
+  title: 'ApnaResume FAQ — ATS, Scoring, Credits, and Resume Analysis',
+  description:
+    'Find answers to common questions about ATS scoring, credits, keyword analysis, and improving your resume match rate.',
   alternates: { canonical: '/faq' },
+  openGraph: {
+    title: 'ApnaResume FAQ',
+    description: 'Answers about ATS scoring, credits, and resume optimization.',
+    url: 'https://apnaresume.com/faq',
+    siteName: 'ApnaResume',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ApnaResume FAQ',
+    description: 'Answers about ATS scoring, credits, and resume optimization.',
+    images: ['/og-image.png'],
+  },
 };
 
 const FAQ_ITEMS = [
