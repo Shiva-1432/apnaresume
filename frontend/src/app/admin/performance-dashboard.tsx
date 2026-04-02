@@ -1,22 +1,13 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import Card from '../../components/ui/Card';
+import { useAuth } from '@clerk/nextjs';
+import { API_BASE_URL } from '@/lib/apiBaseUrl';
 
-interface PerfEndpoint {
-  endpoint: string;
-  avg_time: number;
-  max_time: number;
-  requests: number;
-}
-
-interface PerfMetrics {
-  total_requests: number;
-  avg_response_time: number;
-  error_rate: string;
-  slowest_endpoints: PerfEndpoint[];
-}
+interface PerfEndpoint { endpoint: string; avg_time: number; max_time: number; requests: number; }
+interface PerfMetrics { total_requests: number; avg_response_time: number; error_rate: string; slowest_endpoints: PerfEndpoint[]; }
 
 export default function PerformanceDashboard() {
+  const { getToken } = useAuth();
   const [metrics, setMetrics] = useState<PerfMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -26,9 +17,11 @@ export default function PerformanceDashboard() {
       setLoading(true);
       setError('');
       try {
-        const token = localStorage.getItem('auth_token');
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-        const res = await axios.get<{ metrics: PerfMetrics }>(`${apiBase}/admin/metrics/performance`, {
+        const token = await getToken();
+        if (!token) {
+          throw new Error('Authentication required');
+        }
+        const res = await axios.get<{ metrics: PerfMetrics }>(`${API_BASE_URL}/admin/metrics/performance`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setMetrics(res.data.metrics);
@@ -39,53 +32,62 @@ export default function PerformanceDashboard() {
       }
     };
     fetchMetrics();
-  }, []);
+  }, [getToken]);
+
+  if (loading) return <div className="p-12 text-center font-black text-indigo-600 animate-pulse uppercase tracking-widest text-sm">Probing Latency...</div>;
 
   return (
-    <div className="max-w-4xl mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-6">Performance Dashboard</h1>
-      {loading && <p>Loading...</p>}
-      {error && <p className="text-red-600">{error}</p>}
+    <div className="space-y-10 motion-fade-up">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-neutral-900 tracking-tight">Latency Engine</h1>
+          <p className="text-neutral-500 font-bold">Real-time infrastructure performance monitoring.</p>
+        </div>
+      </div>
+
+      {error && <div className="p-6 bg-red-500/10 border border-red-500/20 text-red-600 rounded-3xl font-bold">{error}</div>}
+
       {metrics && (
-        <>
-          <div className="grid md:grid-cols-3 gap-4 mb-8">
-            <Card variant="elevated" padding="md">
-              <p className="text-gray-600 text-sm">Total Requests</p>
-              <p className="text-3xl font-bold text-blue-600 mt-2">{metrics.total_requests}</p>
-            </Card>
-            <Card variant="elevated" padding="md">
-              <p className="text-gray-600 text-sm">Avg Response Time</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">{metrics.avg_response_time} ms</p>
-            </Card>
-            <Card variant="elevated" padding="md">
-              <p className="text-gray-600 text-sm">Error Rate</p>
-              <p className="text-3xl font-bold text-red-600 mt-2">{metrics.error_rate}</p>
-            </Card>
+        <div className="space-y-10">
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { label: 'Total Ingress', value: metrics.total_requests, color: 'indigo' },
+              { label: 'Avg Latency', value: `${metrics.avg_response_time}ms`, color: 'emerald' },
+              { label: 'Fault Rate', value: metrics.error_rate, color: 'orange' }
+            ].map((m, i) => (
+              <div key={i} className="bg-glass p-8 rounded-[2.5rem] shadow-xl border border-white/40">
+                <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-4">{m.label}</p>
+                <p className="text-4xl font-black text-neutral-900">{m.value}</p>
+              </div>
+            ))}
           </div>
-          <Card variant="elevated" padding="lg">
-            <h2 className="text-xl font-semibold mb-4">Slowest Endpoints</h2>
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr>
-                  <th className="text-left">Endpoint</th>
-                  <th>Avg Time (ms)</th>
-                  <th>Max Time (ms)</th>
-                  <th>Requests</th>
-                </tr>
-              </thead>
-              <tbody>
-                {metrics.slowest_endpoints.map((ep) => (
-                  <tr key={ep.endpoint}>
-                    <td className="pr-4 py-1">{ep.endpoint}</td>
-                    <td className="text-center">{ep.avg_time}</td>
-                    <td className="text-center">{ep.max_time}</td>
-                    <td className="text-center">{ep.requests}</td>
+
+          <div className="bg-glass p-10 rounded-[3rem] shadow-2xl border border-white/40 backdrop-blur-3xl">
+            <h2 className="text-2xl font-black text-neutral-900 mb-8 tracking-tight">Host Bottlenecks</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-white/20">
+                    <th className="pb-6 text-xs font-black uppercase tracking-widest text-neutral-400">Resource Path</th>
+                    <th className="pb-6 text-xs font-black uppercase tracking-widest text-neutral-400 text-center">Avg ms</th>
+                    <th className="pb-6 text-xs font-black uppercase tracking-widest text-neutral-400 text-center">Spike ms</th>
+                    <th className="pb-6 text-xs font-black uppercase tracking-widest text-neutral-400 text-right">Hits</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
-        </>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {metrics.slowest_endpoints.map((ep) => (
+                    <tr key={ep.endpoint} className="hover:bg-indigo-50/10 transition-colors">
+                      <td className="py-5 font-bold text-neutral-700">{ep.endpoint}</td>
+                      <td className="py-5 text-center font-black text-neutral-900">{ep.avg_time}</td>
+                      <td className="py-5 text-center font-bold text-orange-500">{ep.max_time}</td>
+                      <td className="py-5 text-right font-black text-neutral-400">{ep.requests}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

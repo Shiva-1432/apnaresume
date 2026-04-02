@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import axios from 'axios';
+import { useAuth } from '@clerk/nextjs';
 import StatusMessage from '@/components/ui/StatusMessage';
+import { API_BASE_URL } from '@/lib/apiBaseUrl';
 
 type MatchAnalysis = {
   match_percentage: number;
@@ -37,6 +39,7 @@ type JobMatcherResult = {
 };
 
 export default function JobMatcher() {
+  const { getToken } = useAuth();
   const [step, setStep] = useState<'input' | 'loading' | 'results'>('input');
   const [jobDescription, setJobDescription] = useState('');
   const [jobTitle, setJobTitle] = useState('');
@@ -50,25 +53,24 @@ export default function JobMatcher() {
   const handleAnalyze = async () => {
     setError('');
     setInfo('');
-
     if (!jobDescription.trim()) {
       setError('Please paste a job description.');
       return;
     }
-
     if (!resumeId.trim()) {
       setError('Please enter a resume ID.');
       return;
     }
-
     setStep('loading');
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('auth_token');
-
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication required');
+      }
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/job-matching/match-resume-to-job`,
+        `${API_BASE_URL}/job-matching/match-resume-to-job`,
         {
           job_description: jobDescription,
           job_title: jobTitle || 'Unknown',
@@ -79,7 +81,6 @@ export default function JobMatcher() {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
-
       const analysis: JobMatcherResult = response.data;
       setResults(analysis);
       setStep('results');
@@ -99,17 +100,17 @@ export default function JobMatcher() {
       setError('No optimized resume is available to download yet.');
       return;
     }
-
     setError('');
     setInfo('');
-
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication required');
+      }
       const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/job-matching/download-optimized/${results.job_match_id}`,
+        `${API_BASE_URL}/job-matching/download-optimized/${results.job_match_id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
       const blob = new Blob([response.data.optimized_resume], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -125,25 +126,21 @@ export default function JobMatcher() {
 
   if (step === 'loading') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-linear-to-br from-neutral-50 to-primary-50">
-        <div className="text-center space-y-6 motion-fade-up">
-          <div className="inline-block animate-spin">
-            <svg className="w-16 h-16 text-primary-600" fill="none" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.1" />
-              <path fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-            </svg>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-mesh">
+        <div className="text-center space-y-8 motion-fade-up">
+          <div className="relative">
+            <div className="w-24 h-24 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mx-auto" />
+            <div className="absolute inset-0 flex items-center justify-center font-black text-indigo-600">AI</div>
           </div>
-
           <div>
-            <h2 className="text-2xl font-bold text-neutral-900">ApnaResume Matcher</h2>
-            <div className="mt-4 space-y-2 text-sm text-neutral-600">
-              <p>Analyzing job requirements...</p>
-              <p>Matching your resume...</p>
-              <p>Generating optimizations...</p>
+            <h2 className="text-3xl font-black text-neutral-900 tracking-tight">Matching Precisely...</h2>
+            <div className="mt-4 flex flex-col items-center gap-2 text-neutral-500 font-medium">
+              <span className="animate-pulse">Analyzing job requirements...</span>
+              <span className="animate-pulse delay-75">Analyzing your skills...</span>
+              <span className="animate-pulse delay-150">Generating optimization roadmap...</span>
             </div>
           </div>
-
-          <p className="text-xs text-neutral-500">This usually takes 30-45 seconds</p>
+          <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Est. time: 30-45 seconds</p>
         </div>
       </div>
     );
@@ -152,64 +149,70 @@ export default function JobMatcher() {
   if (step === 'results') {
     const match = results?.match_analysis;
     const optimizations = results?.optimizations;
-
-    if (!results || !match) {
-      return null;
-    }
+    if (!results || !match) return null;
 
     return (
-      <div className="min-h-screen bg-linear-to-br from-neutral-50 to-primary-50 py-8">
-        <div className="max-w-5xl mx-auto space-y-6 px-4">
-          {error && (
-            <StatusMessage variant="error" message={error} />
-          )}
-          {info && (
-            <StatusMessage variant="success" message={info} />
-          )}
-
-          <div className="text-center mb-8 motion-fade-up">
-            <h1 className="text-4xl font-bold text-neutral-900 mb-2">ApnaResume Matcher Results</h1>
-            <p className="text-neutral-600">
-              for {results.job_analysis?.title} @ {results.job_analysis?.company}
+      <div className="min-h-screen bg-mesh py-12 pb-32">
+        <div className="max-w-5xl mx-auto space-y-12 px-6">
+          <div className="text-center motion-fade-up">
+            <h1 className="text-4xl sm:text-5xl font-black text-neutral-900 mb-3 tracking-tight">Match Analysis</h1>
+            <p className="text-neutral-500 font-bold">
+              {results.job_analysis?.title} <span className="text-neutral-400 mx-2">@</span> {results.job_analysis?.company}
             </p>
           </div>
 
-          <div
-            className={`bg-linear-to-r p-8 rounded-xl text-white text-center shadow-lg transform transition hover:scale-105 ${
-              match.match_percentage >= 80
-                ? 'from-success-600 to-success-700'
-                : match.match_percentage >= 60
-                  ? 'from-primary-600 to-primary-700'
-                  : match.match_percentage >= 40
-                    ? 'from-accent-600 to-accent-700'
-                    : 'from-danger-600 to-danger-700'
-            } motion-soft-pop`}
-          >
-            <div className="text-6xl font-bold mb-2">{match.match_percentage}%</div>
-            <div className="text-xl font-semibold">{match.match_score} Match</div>
-            <p className="mt-4 text-sm opacity-90">{match.match_explanation}</p>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-center">
+            {/* Score Ring */}
+            <div className="lg:col-span-1 flex flex-col items-center motion-soft-pop">
+              <div className={`relative w-48 h-48 rounded-full flex items-center justify-center border-8 shadow-2xl ${
+                match.match_percentage >= 80 ? 'border-emerald-500 shadow-emerald-100' :
+                match.match_percentage >= 60 ? 'border-indigo-500 shadow-indigo-100' :
+                'border-fuchsia-500 shadow-fuchsia-100'
+              }`}>
+                <div className="text-center">
+                  <div className="text-5xl font-black text-neutral-900">{match.match_percentage}%</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Match</div>
+                </div>
+              </div>
+              <div className="mt-8 px-6 py-2 bg-white rounded-full border border-neutral-100 shadow-sm font-black text-neutral-700 uppercase tracking-widest text-xs">
+                {match.match_score} Rating
+              </div>
+            </div>
+
+            {/* Explanation Card */}
+            <div className="lg:col-span-2 bg-glass p-8 rounded-[2rem] border border-white/40 shadow-xl motion-fade-up stagger-1">
+              <h3 className="text-lg font-black text-neutral-900 mb-4 flex items-center gap-2">
+                <span className="w-1.5 h-6 bg-indigo-600 rounded-full" />
+                AI Insights
+              </h3>
+              <p className="text-neutral-600 leading-relaxed font-medium">{match.match_explanation}</p>
+            </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-xl font-bold text-success-700 mb-4">Your Strengths</h3>
-              <div className="space-y-3">
-                {match.strengths_for_role?.map((strength: string, i: number) => (
-                  <div key={i} className="flex gap-3">
-                    <span className="text-success-600 font-bold">✓</span>
-                    <p className="text-sm text-neutral-700">{strength}</p>
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="bg-glass p-8 rounded-[2rem] border border-white/40 shadow-lg motion-fade-up stagger-2">
+              <h3 className="text-lg font-black text-emerald-600 mb-6 flex items-center gap-2 uppercase tracking-wide">
+                <span className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center text-[10px]">✓</span>
+                Key Strengths
+              </h3>
+              <div className="space-y-4">
+                {match.strengths_for_role?.map((strength, i) => (
+                  <div key={i} className="flex gap-4 p-4 bg-white/60 rounded-2xl border border-white/50">
+                    <p className="text-sm text-neutral-700 font-bold leading-relaxed">{strength}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-xl font-bold text-danger-700 mb-4">Areas to Improve</h3>
-              <div className="space-y-3">
-                {match.weaknesses_for_role?.map((weakness: string, i: number) => (
-                  <div key={i} className="flex gap-3">
-                    <span className="text-danger-600 font-bold">!</span>
-                    <p className="text-sm text-neutral-700">{weakness}</p>
+            <div className="bg-glass p-8 rounded-[2rem] border border-white/40 shadow-lg motion-fade-up stagger-3">
+              <h3 className="text-lg font-black text-fuchsia-600 mb-6 flex items-center gap-2 uppercase tracking-wide">
+                <span className="w-5 h-5 rounded-full bg-fuchsia-100 flex items-center justify-center text-[10px]">!</span>
+                Growth Areas
+              </h3>
+              <div className="space-y-4">
+                {match.weaknesses_for_role?.map((weakness, i) => (
+                  <div key={i} className="flex gap-4 p-4 bg-white/60 rounded-2xl border border-white/50">
+                    <p className="text-sm text-neutral-700 font-bold leading-relaxed">{weakness}</p>
                   </div>
                 ))}
               </div>
@@ -217,70 +220,48 @@ export default function JobMatcher() {
           </div>
 
           {match.missing_skills && match.missing_skills.length > 0 && (
-            <div className="bg-accent-50 border-2 border-accent-200 rounded-lg p-6">
-              <h3 className="text-xl font-bold text-accent-700 mb-4">Missing Skills</h3>
-              <p className="text-sm text-accent-700 mb-4">
-                These skills are mentioned in the job but not in your resume:
-              </p>
-              <div className="space-y-2">
-                {match.missing_skills.map((skill: string, i: number) => (
-                  <div key={i} className="flex justify-between items-center bg-white p-3 rounded">
-                    <span className="font-semibold text-neutral-800">{skill}</span>
-                    <button className="text-sm text-primary-600 hover:text-primary-700">Learn</button>
+            <div className="bg-glass p-8 rounded-[25rem] border border-white/40 shadow-xl motion-fade-up">
+               <h3 className="text-lg font-black text-indigo-600 mb-6 flex items-center gap-2 px-8 uppercase tracking-wide">
+                Missing Keywords
+              </h3>
+              <div className="flex flex-wrap gap-3 px-8 pb-4 leading-none">
+                {match.missing_skills.map((skill, i) => (
+                  <div key={i} className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-full text-xs font-black uppercase tracking-wider border border-indigo-100">
+                    {skill}
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="bg-primary-50 border-2 border-primary-200 rounded-lg p-6">
-            <h3 className="text-xl font-bold text-primary-700 mb-4">Action Plan</h3>
-            <ol className="space-y-3">
-              {match.improvements?.map((improvement: string, i: number) => (
-                <li key={i} className="flex gap-3">
-                  <span className="font-bold text-primary-600 shrink-0">{i + 1}.</span>
-                  <p className="text-sm text-neutral-800">{improvement}</p>
-                </li>
+          {/* Action Roadmap */}
+          <div className="bg-neutral-900 rounded-[3rem] p-10 sm:p-16 text-white relative overflow-hidden motion-fade-up">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/20 blur-3xl" />
+            <h3 className="text-2xl font-black mb-8 relative z-10">Optimization Roadmap</h3>
+            <div className="space-y-6 relative z-10">
+              {match.improvements?.map((improvement, i) => (
+                <div key={i} className="flex gap-6 group">
+                  <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center font-black group-hover:bg-indigo-600 transition-colors shrink-0">
+                    {i + 1}
+                  </div>
+                  <p className="text-lg text-neutral-300 font-medium leading-relaxed">{improvement}</p>
+                </div>
               ))}
-            </ol>
+            </div>
           </div>
 
-          {(optimizations?.optimized_experience?.length ?? 0) > 0 && (
-            <div className="bg-success-50 border-2 border-success-200 rounded-lg p-6">
-              <h3 className="text-xl font-bold text-success-700 mb-4">Optimized Bullet Points</h3>
-              <p className="text-sm text-success-700 mb-4">
-                Here are your experience bullets rewritten for this role:
-              </p>
-              <div className="space-y-3">
-                {(optimizations?.optimized_experience || []).map((item: OptimizedExperienceItem, i: number) => (
-                  <div key={i} className="bg-white p-4 rounded border-l-4 border-success-500">
-                    <p className="text-xs text-neutral-500 mb-2">Original:</p>
-                    <p className="text-sm text-neutral-700 mb-3 line-through opacity-50">{item.original}</p>
-                    <p className="text-xs text-neutral-500 mb-2">Optimized for {results.job_analysis?.title}:</p>
-                    <p className="text-sm font-semibold text-neutral-900 mb-2">{item.optimized}</p>
-                    <p className="text-xs text-success-700">Why: {item.why}</p>
-                    <button className="mt-3 text-sm text-success-600 hover:text-success-700 font-semibold">Copy to Clipboard</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-10">
             <button
-              onClick={() => {
-                setStep('input');
-                setResults(null);
-              }}
-              className="px-6 py-3 bg-white border-2 border-primary-600 text-primary-600 rounded-lg font-semibold hover:bg-primary-50"
+              onClick={() => { setStep('input'); setResults(null); }}
+              className="px-8 py-4 bg-white border-2 border-indigo-600 text-indigo-600 rounded-2xl font-black hover:bg-indigo-50 transition-all active:scale-95"
             >
-              Match Another Job
+              Analyze New Job
             </button>
             <button
               onClick={handleDownload}
-              className="px-6 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700"
+              className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all active:scale-95"
             >
-              Download Optimized Resume
+              Download Tailored Resume
             </button>
           </div>
         </div>
@@ -289,102 +270,68 @@ export default function JobMatcher() {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-neutral-50 to-primary-50 py-12 px-4">
+    <div className="min-h-screen bg-mesh py-16 px-6">
       <div className="max-w-3xl mx-auto">
-        <div className="bg-white rounded-xl shadow-lg p-8 motion-fade-up">
-          {error && (
-            <StatusMessage variant="error" message={error} className="mb-6" />
-          )}
-          {info && (
-            <StatusMessage variant="success" message={info} className="mb-6" />
-          )}
-
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-neutral-900 mb-2">ApnaResume Matcher</h1>
-            <p className="text-neutral-600 text-lg">Paste a job description to get role-specific resume insights instantly.</p>
+        <div className="bg-glass rounded-[2.5rem] p-8 sm:p-12 shadow-2xl border border-white/40 motion-fade-up">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-black text-neutral-900 mb-4 tracking-tight">Job Matcher</h1>
+            <p className="text-neutral-500 font-bold uppercase tracking-widest text-xs">Essential Analysis for your Next Career Move</p>
           </div>
 
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-neutral-700 mb-2">Resume ID *</label>
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <label className="text-[11px] font-black uppercase tracking-[0.2em] text-neutral-400 ml-4">Job Title</label>
+                <input
+                  type="text"
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                  placeholder="e.g. Senior Backend Engineer"
+                  className="w-full px-8 py-5 bg-white rounded-[1.5rem] border border-neutral-100 focus:outline-none focus:border-indigo-500 shadow-sm font-bold text-neutral-800 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-neutral-300"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-[11px] font-black uppercase tracking-[0.2em] text-neutral-400 ml-4">Company</label>
+                <input
+                  type="text"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  placeholder="e.g. Google"
+                  className="w-full px-8 py-5 bg-white rounded-[1.5rem] border border-neutral-100 focus:outline-none focus:border-indigo-500 shadow-sm font-bold text-neutral-800 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-neutral-300"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[11px] font-black uppercase tracking-[0.2em] text-neutral-400 ml-4">Resume ID *</label>
               <input
                 type="text"
                 value={resumeId}
                 onChange={(e) => setResumeId(e.target.value)}
-                placeholder="Paste your resume ID"
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:border-primary-500"
+                placeholder="Paste your unique resume reference"
+                className="w-full px-8 py-5 bg-white rounded-[1.5rem] border border-neutral-100 focus:outline-none focus:border-indigo-500 shadow-sm font-bold font-mono text-sm focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-neutral-300"
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-neutral-700 mb-2">Job Title (Optional)</label>
-              <input
-                type="text"
-                value={jobTitle}
-                onChange={(e) => setJobTitle(e.target.value)}
-                placeholder="e.g., Senior Backend Engineer"
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:border-primary-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-neutral-700 mb-2">Company (Optional)</label>
-              <input
-                type="text"
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-                placeholder="e.g., Google, Amazon, Flipkart"
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:border-primary-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-neutral-700 mb-2">Job Description *</label>
+            <div className="space-y-3">
+              <label className="text-[11px] font-black uppercase tracking-[0.2em] text-neutral-400 ml-4">Job Description *</label>
               <textarea
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
-                placeholder="Paste the complete job description here..."
-                rows={12}
-                className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:border-primary-500 font-mono text-sm"
+                placeholder="Paste the full job description here..."
+                rows={8}
+                className="w-full px-8 py-5 bg-white rounded-[1.5rem] border border-neutral-100 focus:outline-none focus:border-indigo-500 shadow-sm font-bold text-neutral-800 focus:ring-4 focus:ring-indigo-500/10 transition-all min-h-[200px] placeholder:text-neutral-300"
               />
-              <p className="text-xs text-neutral-500 mt-2">Copy from LinkedIn, job portal, or company website</p>
             </div>
 
             <button
               onClick={handleAnalyze}
               disabled={loading || !jobDescription.trim() || !resumeId.trim()}
-              className="w-full py-3 bg-linear-to-r from-primary-600 to-primary-700 text-white font-bold rounded-lg hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="w-full py-5 bg-indigo-600 text-white font-black text-xl rounded-2xl hover:bg-indigo-700 shadow-2xl shadow-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
             >
-              {loading ? 'Analyzing...' : 'Analyze Job Fit'}
+              {loading ? 'Analyzing...' : 'Analyze Role Fit'}
             </button>
-
-            <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 text-sm text-neutral-700">
-              <p className="font-semibold mb-2">How it works:</p>
-              <p>1. Paste any job description from LinkedIn, job portal, or company website</p>
-              <p>2. ApnaResume analyzes the job requirements (takes 30-45 seconds)</p>
-              <p>3. Get a match percentage and optimized resume for that specific job</p>
-              <p>4. Copy optimized bullets or download your tailored resume</p>
-              <p className="text-xs text-neutral-500 mt-3">Costs 3 credits per analysis</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8 bg-white rounded-xl shadow-lg p-8 motion-fade-up">
-          <h2 className="text-xl font-bold text-neutral-900 mb-4">Example Job Description Sources</h2>
-          <p className="text-sm text-neutral-600 mb-4">Want to see how it works? Try pasting a job description from:</p>
-          <div className="grid md:grid-cols-2 gap-4">
-            <a href="#" className="p-4 bg-primary-50 rounded-lg hover:bg-primary-100 text-sm font-semibold text-primary-600 hover-lift-soft">
-              LinkedIn Jobs
-            </a>
-            <a href="#" className="p-4 bg-accent-50 rounded-lg hover:bg-accent-100 text-sm font-semibold text-accent-600 hover-lift-soft">
-              Naukri.com
-            </a>
-            <a href="#" className="p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 text-sm font-semibold text-neutral-700 hover-lift-soft">
-              Indeed
-            </a>
-            <a href="#" className="p-4 bg-success-50 rounded-lg hover:bg-success-100 text-sm font-semibold text-success-600 hover-lift-soft">
-              Company Websites
-            </a>
+            <p className="text-center text-[10px] font-black text-neutral-400 uppercase tracking-widest">Costs 3 Credits</p>
           </div>
         </div>
       </div>

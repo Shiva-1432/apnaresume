@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import axios from 'axios';
+import { useAuth } from '@clerk/nextjs';
+import { API_BASE_URL } from '@/lib/apiBaseUrl';
 import { useScript } from '@/hooks/useScript';
 
 type RazorpayHandlerResponse = {
@@ -33,6 +35,7 @@ declare global {
 }
 
 export default function PaymentModal({ onSuccess }: { onSuccess: () => void }) {
+  const { getToken } = useAuth();
   const [amount, setAmount] = useState(199);
   const [loading, setLoading] = useState(false);
 
@@ -42,11 +45,14 @@ export default function PaymentModal({ onSuccess }: { onSuccess: () => void }) {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication required');
+      }
 
       // Create order
       const orderResponse = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/payments/create-order`,
+        `${API_BASE_URL}/payments/create-order`,
         { amount },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -64,7 +70,7 @@ export default function PaymentModal({ onSuccess }: { onSuccess: () => void }) {
         handler: async (response: RazorpayHandlerResponse) => {
           // Verify payment
           await axios.post(
-            `${process.env.NEXT_PUBLIC_API_URL}/payments/verify-payment`,
+            `${API_BASE_URL}/payments/verify-payment`,
             {
               razorpay_order_id: order_id,
               razorpay_payment_id: response.razorpay_payment_id,

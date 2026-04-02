@@ -2,58 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
-  @keyframes soft-pop {
-    from {
-      opacity: 0;
-      transform: scale(0.98);
-    }
-
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
   }
 
-  .motion-fade-up {
-    animation: fade-slide-up 420ms ease-out both;
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+  }
+}
+
+@layer utilities {
+  /* Original light mesh background */
+  .bg-mesh {
+    background-color: #f8faff;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.06) 0px, transparent 50%),
+      radial-gradient(at 50% 100%, rgba(99, 102, 241, 0.05) 0px, transparent 50%);
+    background-attachment: fixed;
   }
 
-  .motion-soft-pop {
-    animation: soft-pop 320ms ease-out both;
+  /* Original light glass panel */
+  .bg-glass {
+    @apply bg-white/70 backdrop-blur-2xl;
   }
 
-  .stagger-1 {
-    animation-delay: 60ms;
+  /* Dark variant kept for optional future use */
+  .bg-mesh-cosmic {
+    background-color: #0a0a1a;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(108, 99, 255, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(0, 212, 255, 0.15) 0px, transparent 50%),
+      radial-gradient(at 50% 50%, rgba(108, 99, 255, 0.08) 0px, transparent 50%);
+    background-attachment: fixed;
   }
 
-  .stagger-2 {
-    animation-delay: 120ms;
+  .bg-glass-luxury {
+    @apply bg-white/[0.05] backdrop-blur-[24px] border border-white/[0.10];
   }
 
-  .stagger-3 {
-    animation-delay: 180ms;
+  .text-gradient-cyan {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-white to-accent-cyan;
   }
+}
 
-  .stagger-4 {
-    animation-delay: 240ms;
-  }
+@keyframes spring-bounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
 
-  .hover-lift {
-    transition: transform 220ms ease, box-shadow 220ms ease;
-    will-change: transform;
+@keyframes fadeInMove {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
-  .hover-lift:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 16px 36px -24px rgba(2, 132, 199, 0.5);
-  }
+.motion-spring {
+  transition: all 0.4s cubic-bezier(.34, 1.56, .64, 1);
+}
 
-  .hover-lift-soft {
-    transition: transform 180ms ease, box-shadow 180ms ease;
-    will-change: transform;
-  }
+.motion-fade-premium {
+  animation: fadeInMove 0.25s ease-out forwards;
+}
 
-  .hover-lift-soft:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 24px -20px rgba(17, 24, 39, 0.45);
-  }
+.motion-fade-up {
+  animation: fadeInMove 0.3s ease-out forwards;
+}

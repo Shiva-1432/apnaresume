@@ -10,7 +10,7 @@ describe('ApnaResume Backend', () => {
     expect(response.body.status).toBe('ok');
   });
 
-  test('Auth routes exist', async () => {
+  test('Legacy auth register route returns 410', async () => {
     const response = await request(app)
       .post('/api/auth/register')
       .send({
@@ -19,51 +19,51 @@ describe('ApnaResume Backend', () => {
         name: 'Test User'
       });
 
-    // Should either succeed, return validation error, or 503 when DB is unavailable
-    expect([200, 201, 400, 409, 503]).toContain(response.status);
+    expect(response.status).toBe(410);
+    expect(response.body.error).toMatch(/legacy \/api\/auth endpoints are removed/i);
   });
 
-  test('Logout route exists and enforces auth', async () => {
+  test('Legacy auth logout route returns 410', async () => {
     const response = await request(app)
       .post('/api/auth/logout')
       .send({});
 
-    expect([401, 403, 503]).toContain(response.status);
+    expect(response.status).toBe(410);
   });
 
-  test('Logout-all route exists and enforces auth', async () => {
+  test('Legacy auth logout-all route returns 410', async () => {
     const response = await request(app)
       .post('/api/auth/logout-all')
       .send({});
 
-    expect([401, 403, 503]).toContain(response.status);
+    expect(response.status).toBe(410);
   });
 
-  test('Verify-email route exists', async () => {
+  test('Legacy auth verify-email route returns 410', async () => {
     const response = await request(app)
       .post('/api/auth/verify-email')
       .send({ email: 'test@example.com', token: 'invalid-token' });
 
-    expect([200, 400, 404, 503]).toContain(response.status);
+    expect(response.status).toBe(410);
   });
 
-  test('Resend-verification route exists', async () => {
+  test('Legacy auth resend-verification route returns 410', async () => {
     const response = await request(app)
       .post('/api/auth/resend-verification')
       .send({ email: 'test@example.com' });
 
-    expect([200, 400, 503]).toContain(response.status);
+    expect(response.status).toBe(410);
   });
 
-  test('Forgot-password route exists', async () => {
+  test('Legacy auth forgot-password route returns 410', async () => {
     const response = await request(app)
       .post('/api/auth/forgot-password')
       .send({ email: 'test@example.com' });
 
-    expect([200, 400, 503]).toContain(response.status);
+    expect(response.status).toBe(410);
   });
 
-  test('Reset-password route exists', async () => {
+  test('Legacy auth reset-password route returns 410', async () => {
     const response = await request(app)
       .post('/api/auth/reset-password')
       .send({
@@ -72,6 +72,7 @@ describe('ApnaResume Backend', () => {
         new_password: 'NewPass123'
       });
 
-    expect([200, 400, 404, 503]).toContain(response.status);
+    expect(response.status).toBe(410);
+    expect(response.body.message).toMatch(/use clerk sign-in and sign-up flows/i);
   });
 });

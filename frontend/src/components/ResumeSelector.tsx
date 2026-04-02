@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
+import { useAuth } from '@clerk/nextjs';
+import { API_BASE_URL } from '@/lib/apiBaseUrl';
 
 type ResumeItem = {
   _id: string;
@@ -15,6 +17,7 @@ type ResumeItem = {
 };
 
 export default function ResumeSelector({ onSelect }: { onSelect: (resumeId: string) => void }) {
+  const { getToken } = useAuth();
   const [resumes, setResumes] = useState<ResumeItem[]>([]);
   const [versions, setVersions] = useState<ResumeItem[]>([]);
   const [selectedId, setSelectedId] = useState('');
@@ -23,7 +26,7 @@ export default function ResumeSelector({ onSelect }: { onSelect: (resumeId: stri
 
   const fetchResumes = useCallback(async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = await getToken();
       if (!token) {
         setError('Login required to load resumes.');
         setLoading(false);
@@ -31,7 +34,7 @@ export default function ResumeSelector({ onSelect }: { onSelect: (resumeId: stri
       }
 
       const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/analysis/user-resumes`,
+        `${API_BASE_URL}/analysis/user-resumes`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -54,7 +57,7 @@ export default function ResumeSelector({ onSelect }: { onSelect: (resumeId: stri
     } finally {
       setLoading(false);
     }
-  }, [onSelect]);
+  }, [getToken, onSelect]);
 
   useEffect(() => {
     fetchResumes();

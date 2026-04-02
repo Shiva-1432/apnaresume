@@ -1,29 +1,47 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { clearStoredSession, getStoredSession } from '@/lib/session';
+import { useClerk, useUser } from '@clerk/nextjs';
+import * as Sentry from '@sentry/nextjs';
 
 export function useAuth() {
   const router = useRouter();
+  const { signOut } = useClerk();
+  const { isLoaded, isSignedIn, user } = useUser();
+
+  const redirectAfterSignOut = () => {
+    router.push('/');
+  };
+
+  useEffect(() => {
+    if (!isLoaded) {
+      return;
+    }
+
+    if (isSignedIn && user) {
+      Sentry.setUser({
+        id: user.id,
+        email: user.emailAddresses[0]?.emailAddress,
+      });
+      return;
+    }
+
+    Sentry.setUser(null);
+  }, [isLoaded, isSignedIn, user]);
 
   const logout = async () => {
-    const { token } = getStoredSession();
-
     try {
-      if (token) {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      }
+      Sentry.setUser(null);
+      await signOut({ redirectUrl: '/' });
+      return;
     } catch (error) {
       console.error('Logout failed:', error);
     }
 
-    clearStoredSession();
-
-    router.push('/login?reason=logged-out');
+    Sentry.setUser(null);
+    redirectAfterSignOut();
   };
 
-  return { logout };
+  return { logout, redirectAfterSignOut };
 }

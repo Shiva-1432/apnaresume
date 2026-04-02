@@ -10,7 +10,10 @@ const router = express.Router();
 
 router.get('/list', authenticateToken, async (req, res) => {
   try {
-    const resumes = await Resume.find({ user_id: req.user.user_id }).sort({ created_at: -1 });
+    const resumes = await Resume.find({
+      user_id: req.user.user_id,
+      is_deleted: { $ne: true }
+    }).sort({ created_at: -1 });
 
     return res.json({
       success: true,
@@ -26,7 +29,10 @@ router.get('/list', authenticateToken, async (req, res) => {
 
 router.get('/performance-stats', authenticateToken, async (req, res) => {
   try {
-    const resumes = await Resume.find({ user_id: req.user.user_id }).sort({ created_at: -1 });
+    const resumes = await Resume.find({
+      user_id: req.user.user_id,
+      is_deleted: { $ne: true }
+    }).sort({ created_at: -1 });
     const applications = await JobApplication.find({
       user_id: req.user.user_id,
       resume_used: { $ne: null }
@@ -122,7 +128,11 @@ router.post('/create-role-version', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'target_role must be between 2 and 120 characters' });
     }
 
-    const baseResume = await Resume.findById(base_resume_id);
+    const baseResume = await Resume.findOne({
+      _id: base_resume_id,
+      user_id: req.user.user_id,
+      is_deleted: { $ne: true }
+    });
     if (!baseResume) {
       return res.status(404).json({ error: 'Base resume not found' });
     }

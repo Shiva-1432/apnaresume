@@ -1,10 +1,12 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const Resume = require('../models/Resume');
 const SkillGap = require('../models/SkillGap');
+const User = require('../models/User');
 const { authenticateToken } = require('../middleware/auth');
 const { createFeatureQuota } = require('../middleware/featureQuota');
+const { getGeminiModel, generateContentWithRetry } = require('../utils/ai');
+const { checkCredits } = require('../middleware/creditCheck');
 
 const router = express.Router();
 
@@ -19,7 +21,7 @@ const skillGapQuota = createFeatureQuota('skill_gap_analysis', {
   }
 });
 
-router.post('/analyze-skill-gaps', authenticateToken, skillGapQuota, async (req, res) => {
+router.post('/analyze-skill-gaps', authenticateToken, skillGapQuota, checkCredits(2), async (req, res) => {
   try {
     const { target_role, job_description = '' } = req.body;
 
@@ -32,12 +34,12 @@ router.post('/analyze-skill-gaps', authenticateToken, skillGapQuota, async (req,
       return res.status(404).json({ error: 'No resume found for this user' });
     }
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    // Use centralized AI model
+    const model = getGeminiModel('gemini-pro');
 
     const skillGapPrompt = `Analyze skill gaps for this user:\n\nTARGET ROLE: ${target_role}\nJOB DESCRIPTION: ${job_description}\n\nUSER'S CURRENT RESUME:\n${resume.extracted_text}\n\nProvide:\n1. Current skills (extracted from resume)\n2. Required skills for the role\n3. Nice-to-have skills\n4. Critical gaps (blocking adoption)\n5. Nice-to-have gaps (good to have)\n6. Estimated learning time for each gap\n7. Free/cheap learning resources\n\nReturn as JSON:\n{\n  "current_skills": ["skill1", "skill2"],\n  "required_skills": ["skill1", "skill2"],\n  "skill_gaps": [\n    {\n      "skill": "AWS",\n      "gap_type": "critical/nice-to-have",\n      "current_level": "none/beginner/intermediate/advanced",\n      "required_level": "intermediate/advanced",\n      "importance": "high/medium/low",\n      "learning_time_hours": 40,\n      "resources": [\n        {\n          "name": "AWS Free Tier",\n          "url": "...",\n          "cost": "free",\n          "time": 40\n        }\n      ]\n    }\n  ],\n  "learning_roadmap": [\n    {\n      "week": 1,\n      "skills": ["skill1"],\n      "resources": ["resource1"]\n    }\n  ]\n}`;
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-    const analysis = await model.generateContent(skillGapPrompt);
+    const analysis = await generateContentWithRetry(model, skillGapPrompt);
     const analysisText = analysis.response.text();
     const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -59,9 +61,15 @@ router.post('/analyze-skill-gaps', authenticateToken, skillGapQuota, async (req,
 
     await skillGap.save();
 
+    // Deduct credits (using user from middleware)
+    const user = req.fullUser;
+    user.credits -= 2;
+    await user.save();
+
     return res.json({
       success: true,
       skill_gaps: skillData,
+      credits_remaining: user.credits,
       feature_quota: req.featureQuota,
       actionable_plan: skillData.learning_roadmap || []
     });

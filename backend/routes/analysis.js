@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const multer = require('multer');
 const pdfParse = require('pdf-parse');
 const User = require('../models/User');
@@ -8,8 +9,14 @@ const JobApplication = require('../models/JobApplication');
 const { authenticateToken } = require('../middleware/auth');
 const { createFeatureQuota } = require('../middleware/featureQuota');
 const { validateResumeUpload, handleValidationErrors } = require('../middleware/validation');
-const { generateContentWithRetry } = require('../utils/ai');
+const { getGeminiModel, generateContentWithRetry } = require('../utils/ai');
+const { checkCredits } = require('../middleware/creditCheck');
+
 const router = express.Router();
+
+function isValidObjectId(value) {
+  return mongoose.Types.ObjectId.isValid(String(value || '').trim());
+}
 
 const analyzeResumeQuota = createFeatureQuota('resume_analysis', {
   free: {
@@ -60,7 +67,10 @@ function uploadResume(req, res, next) {
 // LIST USER RESUMES (base + versions)
 router.get('/user-resumes', authenticateToken, async (req, res) => {
   try {
-    const resumes = await Resume.find({ user_id: req.user.user_id }).sort({ created_at: -1 });
+    const resumes = await Resume.find({
+      user_id: req.user.user_id,
+      is_deleted: { $ne: true }
+    }).sort({ created_at: -1 });
     const applications = await JobApplication.find({
       user_id: req.user.user_id,
       resume_used: { $ne: null }
@@ -109,6 +119,149 @@ router.get('/user-resumes', authenticateToken, async (req, res) => {
   }
 });
 
+router.get('/trash', authenticateToken, async (req, res) => {
+  try {
+    const resumes = await Resume.find({
+      user_id: req.user.user_id,
+      is_deleted: true
+    }).sort({ deleted_at: -1, created_at: -1 });
+
+    return res.json({
+      success: true,
+      resumes
+    });
+  } catch (error) {
+    console.error('Trash fetch error:', error);
+    return res.status(500).json({ error: 'Failed to fetch deleted resumes' });
+  }
+});
+
+router.get('/resume/:resumeId', authenticateToken, async (req, res) => {
+  try {
+    const { resumeId } = req.params;
+
+    if (!isValidObjectId(resumeId)) {
+      return res.status(400).json({ error: 'Invalid resume id format' });
+    }
+
+    const resume = await Resume.findOne({
+      _id: resumeId,
+      user_id: req.user.user_id,
+      is_deleted: { $ne: true }
+    });
+
+    if (!resume) {
+      return res.status(404).json({ error: 'Resume not found' });
+    }
+
+    const analysis = await AnalysisResult.findOne({
+      user_id: req.user.user_id,
+      resume_id: resume._id
+    });
+
+    return res.json({
+      success: true,
+      resume,
+      analysis: analysis || null
+    });
+  } catch (error) {
+    console.error('Resume detail error:', error);
+    return res.status(500).json({ error: 'Failed to fetch resume details' });
+  }
+});
+
+router.delete('/resume/:resumeId', authenticateToken, async (req, res) => {
+  try {
+    const { resumeId } = req.params;
+    const shouldPermanentlyDelete = String(req.query.permanent || '').toLowerCase() === 'true';
+
+    if (!isValidObjectId(resumeId)) {
+      return res.status(400).json({ error: 'Invalid resume id format' });
+    }
+
+    if (shouldPermanentlyDelete) {
+      const deletedResume = await Resume.findOne({
+        _id: resumeId,
+        user_id: req.user.user_id,
+        is_deleted: true
+      });
+
+      if (!deletedResume) {
+        return res.status(404).json({ error: 'Deleted resume not found' });
+      }
+
+      await Resume.deleteOne({
+        _id: resumeId,
+        user_id: req.user.user_id,
+        is_deleted: true
+      });
+
+      return res.json({
+        success: true,
+        message: 'Resume permanently deleted'
+      });
+    }
+
+    const resume = await Resume.findOne({
+      _id: resumeId,
+      user_id: req.user.user_id,
+      is_deleted: { $ne: true }
+    });
+
+    if (!resume) {
+      return res.status(404).json({ error: 'Resume not found' });
+    }
+
+    resume.is_deleted = true;
+    resume.deleted_at = new Date();
+    resume.updated_at = new Date();
+    await resume.save();
+
+    return res.json({
+      success: true,
+      message: 'Resume moved to trash',
+      resume
+    });
+  } catch (error) {
+    console.error('Resume delete error:', error);
+    return res.status(500).json({ error: 'Failed to delete resume' });
+  }
+});
+
+router.post('/resume/:resumeId/restore', authenticateToken, async (req, res) => {
+  try {
+    const { resumeId } = req.params;
+
+    if (!isValidObjectId(resumeId)) {
+      return res.status(400).json({ error: 'Invalid resume id format' });
+    }
+
+    const resume = await Resume.findOne({
+      _id: resumeId,
+      user_id: req.user.user_id,
+      is_deleted: true
+    });
+
+    if (!resume) {
+      return res.status(404).json({ error: 'Deleted resume not found' });
+    }
+
+    resume.is_deleted = false;
+    resume.deleted_at = null;
+    resume.updated_at = new Date();
+    await resume.save();
+
+    return res.json({
+      success: true,
+      message: 'Resume restored successfully',
+      resume
+    });
+  } catch (error) {
+    console.error('Resume restore error:', error);
+    return res.status(500).json({ error: 'Failed to restore resume' });
+  }
+});
+
 // UPLOAD & ANALYZE endpoint
 router.post(
   '/upload-and-analyze',
@@ -116,6 +269,7 @@ router.post(
   handleValidationErrors,
   authenticateToken,
   analyzeResumeQuota,
+  checkCredits(5), // New credit validation middleware
   uploadResume,
   async (req, res) => {
   try {
@@ -149,15 +303,16 @@ router.post(
       user_id: req.user.user_id,
       file_name: req.file.originalname,
       extracted_text: extractedText,
-      parsing_confidence: 'high'
+      parsing_confidence: 'high',
+      is_deleted: false,
+      deleted_at: null,
+      updated_at: new Date()
     });
 
     await resume.save();
 
-    // Call Gemini API for analysis
-    const { GoogleGenerativeAI } = require('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    // Call Gemini API for analysis (Centralized Config)
+    const model = getGeminiModel('gemini-pro');
 
     const prompt = `Analyze this resume for ATS compatibility:
 
@@ -206,8 +361,8 @@ Provide response ONLY in this JSON format (no markdown, no extra text):
 
     await analysisResult.save();
 
-    // Deduct credits
-    const user = await User.findById(req.user.user_id);
+    // Deduct credits (using req.fullUser from creditCheck middleware)
+    const user = req.fullUser;
     user.credits -= 5;
     await user.save();
 

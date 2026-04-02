@@ -2,7 +2,6 @@
 
 const express = require('express');
 const mongoose = require('mongoose');
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Resume = require('../models/Resume');
 const AnalysisResult = require('../models/AnalysisResult');
@@ -11,23 +10,11 @@ const JobApplication = require('../models/JobApplication');
 const SupportTicket = require('../models/SupportTicket');
 const AdminLog = require('../models/AdminLog');
 const { getMetrics } = require('../middleware/performance');
+const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Middleware: Authenticate + Verify Admin Role
-const authenticateToken = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) {
-    return res.status(401).json({ error: 'No token' });
-  }
-
-  try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET);
-    next();
-  } catch {
-    return res.status(403).json({ error: 'Invalid token' });
-  }
-};
 
 const verifyAdmin = async (req, res, next) => {
   try {

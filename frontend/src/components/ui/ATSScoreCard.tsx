@@ -1,6 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import {
+  getScoreBg,
+  getScoreColor,
+  getScoreLabel,
+  getScoreTier,
+} from '@/lib/constants/scores';
 
 interface ATSScoreCardProps {
   score: number; // 0-100
@@ -19,19 +25,19 @@ export default function ATSScoreCard({
   onViewDetails
 }: ATSScoreCardProps) {
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const tier = getScoreTier(score);
+  const label = getScoreLabel(score);
+  const scoreTextClass = getScoreColor(tier);
+  const scoreBgClass = getScoreBg(tier);
 
-  // Score rating
-  const getScoreRating = (s: number) => {
-    if (s >= 80) return { label: 'Excellent', color: 'success', emoji: '🟢' };
-    if (s >= 60) return { label: 'Good', color: 'accent', emoji: '🟡' };
-    if (s >= 40) return { label: 'Fair', color: 'warning', emoji: '🟠' };
-    return { label: 'Needs Work', color: 'danger', emoji: '🔴' };
+  const ratingCopy: Record<typeof label, string> = {
+    'Needs Work': '💪 Major revisions recommended',
+    'On Track': '👍 Good foundation, minor improvements',
+    'ATS Ready': '🎉 Ready to apply!',
   };
 
-  const rating = getScoreRating(score);
-
   return (
-    <div className="bg-linear-to-br from-primary-50 to-primary-100 rounded-xl p-8 shadow-lg border border-primary-200">
+    <div className={`rounded-xl p-8 shadow-lg border border-primary-200 ${scoreBgClass}`}>
       {/* Main Score */}
       <div className="text-center mb-8">
         <div className="inline-block relative">
@@ -62,20 +68,17 @@ export default function ATSScoreCard({
 
             {/* Score text in center */}
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <p className="text-4xl font-extrabold text-primary-700">{score}</p>
-              <p className="text-xs font-semibold text-primary-600">out of 100</p>
+              <p className={`text-4xl font-extrabold ${scoreTextClass}`}>{score}</p>
+              <p className={`text-xs font-semibold ${scoreTextClass}`}>out of 100</p>
             </div>
           </div>
         </div>
 
         {/* Rating */}
         <div className="mt-6">
-          <p className="text-2xl font-bold text-neutral-900">{rating.label}</p>
+          <p className={`text-2xl font-bold ${scoreTextClass}`}>{label}</p>
           <p className="text-sm text-neutral-600 mt-1">
-            {rating.label === 'Excellent' && '🎉 Ready to apply!'}
-            {rating.label === 'Good' && '👍 Good foundation, minor improvements'}
-            {rating.label === 'Fair' && '⚠️ Significant improvements needed'}
-            {rating.label === 'Needs Work' && '💪 Major revisions recommended'}
+            {ratingCopy[label]}
           </p>
         </div>
       </div>

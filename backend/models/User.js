@@ -3,6 +3,12 @@ const bcrypt = require('bcrypt');
 
 const userSchema = new mongoose.Schema({
   _id: mongoose.Schema.Types.ObjectId,
+  clerk_user_id: {
+    type: String,
+    unique: true,
+    sparse: true,
+    trim: true
+  },
   
   // Basic info
   email: {
@@ -20,7 +26,9 @@ const userSchema = new mongoose.Schema({
   
   password: {
     type: String,
-    required: true,
+    required: function () {
+      return !this.clerk_user_id;
+    },
     minlength: 8
   },
   
@@ -65,20 +73,15 @@ const userSchema = new mongoose.Schema({
 });
 
 // Hash password before saving
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
+userSchema.pre('save', async function() {
+  if (!this.password || !this.isModified('password')) return;
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
 // Method to verify password
 userSchema.methods.verifyPassword = async function(password) {
+  if (!this.password) return false;
   return await bcrypt.compare(password, this.password);
 };
 

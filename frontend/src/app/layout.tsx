@@ -1,23 +1,25 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Geist, Geist_Mono } from "next/font/google";
+import { ClerkProvider, SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
+import { Syne, DM_Sans } from "next/font/google";
 import "./globals.css";
+import { env } from "@/lib/env";
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 const googleSiteVerification = process.env.GOOGLE_SITE_VERIFICATION;
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const syne = Syne({
+  variable: "--font-syne",
   subsets: ["latin"],
+  weight: ["800"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "700"],
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
   title: {
     default: "ApnaResume | AI Resume Analyzer & ATS Score Checker",
     template: "%s | ApnaResume",
@@ -38,7 +40,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_IN",
-    url: siteUrl,
+    url: env.NEXT_PUBLIC_APP_URL,
     siteName: "ApnaResume",
     title: "ApnaResume | AI Resume Analyzer & ATS Score Checker",
     description:
@@ -64,6 +66,9 @@ export const metadata: Metadata = {
   },
 };
 
+import AppShell from "@/components/AppShell";
+import AppProviders from "@/components/AppProviders";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -72,35 +77,28 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${syne.variable} ${dmSans.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-gray-50">
-        <nav className="bg-white shadow">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
-            <h1 className="text-2xl font-bold text-blue-600">ApnaResume</h1>
-            <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-gray-700">
-              <Link href="/" className="hover:text-blue-600">Home</Link>
-              <Link href="/dashboard" className="hover:text-blue-600">Dashboard</Link>
-              <Link href="/job-matcher" className="hover:text-blue-600">Job Matcher</Link>
-              <Link href="/fresher-mode" className="hover:text-blue-600">Fresher Mode</Link>
-              <Link href="/faq" className="hover:text-blue-600">FAQ</Link>
-              <Link href="/support" className="hover:text-blue-600">Support</Link>
+      <body className="min-h-full flex flex-col bg-mesh font-dm transition-colors duration-500">
+        <ClerkProvider signInForceRedirectUrl="/dashboard" signUpForceRedirectUrl="/dashboard">
+          <header className="fixed top-3 right-4 z-[60]">
+            <div className="flex items-center gap-2 bg-white/70 backdrop-blur-xl border border-neutral-200 rounded-xl px-3 py-2 shadow-sm">
+              <Show when="signed-out">
+                <SignInButton><span className="text-xs font-bold text-neutral-700 hover:text-indigo-600">Sign In</span></SignInButton>
+                <SignUpButton><span className="text-xs font-bold text-indigo-600 hover:text-indigo-700">Sign Up</span></SignUpButton>
+              </Show>
+              <Show when="signed-in">
+                <UserButton />
+              </Show>
             </div>
-          </div>
-        </nav>
-        <main className="max-w-7xl mx-auto px-4">
-          {children}
-        </main>
-        <footer className="mt-auto border-t border-gray-200 bg-white">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-600">
-            <p>© {new Date().getFullYear()} ApnaResume</p>
-            <div className="flex items-center gap-4">
-              <Link href="/terms" className="hover:text-blue-600">Terms</Link>
-              <Link href="/privacy" className="hover:text-blue-600">Privacy</Link>
-              <Link href="/support" className="hover:text-blue-600">Support</Link>
-            </div>
-          </div>
-        </footer>
+          </header>
+
+          <AppProviders>
+            <AppShell>{children}</AppShell>
+          </AppProviders>
+        </ClerkProvider>
+
       </body>
     </html>
   );

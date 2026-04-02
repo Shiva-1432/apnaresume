@@ -15,49 +15,6 @@ const sendGrid = initSendGrid();
 
 // Email templates
 const emailTemplates = {
-  verifyEmail: (email, token, userName) => ({
-    to: email,
-    from: process.env.SENDGRID_FROM_EMAIL || 'noreply@apnaresume.com',
-    subject: '✉️ Verify your ApnaResume email',
-    html: `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-            .content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
-            .button { display: inline-block; padding: 12px 24px; background: #0284c7; color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; }
-            .footer { color: #6b7280; font-size: 12px; margin-top: 20px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h2>Welcome to ApnaResume! 🎉</h2>
-            </div>
-            <div class="content">
-              <p>Hi ${userName},</p>
-              <p>Thank you for signing up! Please verify your email address to get started.</p>
-              <a href="${process.env.FRONTEND_URL}/verify-email?token=${token}&email=${encodeURIComponent(email)}" class="button">
-                Verify Email
-              </a>
-              <p style="color: #6b7280; font-size: 14px;">
-                This link expires in 24 hours.
-              </p>
-              <p>If you didn't create this account, please ignore this email.</p>
-              <div class="footer">
-                <p>ApnaResume AI - Your Resume, Optimized</p>
-                <p>© 2026 ApnaResume. All rights reserved.</p>
-              </div>
-            </div>
-          </div>
-        </body>
-      </html>
-    `,
-  }),
-
   paymentConfirmation: (email, userName, amount, credits) => ({
     to: email,
     from: process.env.SENDGRID_FROM_EMAIL || 'noreply@apnaresume.com',
@@ -113,56 +70,6 @@ const emailTemplates = {
 
               <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
                 Need help? Visit our <a href="${process.env.FRONTEND_URL}/support">support page</a>.
-              </p>
-
-              <div class="footer">
-                <p>ApnaResume AI - Your Resume, Optimized</p>
-                <p>© 2026 ApnaResume. All rights reserved.</p>
-              </div>
-            </div>
-          </div>
-        </body>
-      </html>
-    `,
-  }),
-
-  passwordReset: (email, userName, resetToken) => ({
-    to: email,
-    from: process.env.SENDGRID_FROM_EMAIL || 'noreply@apnaresume.com',
-    subject: '🔑 Reset Your ApnaResume Password',
-    html: `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-            .content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
-            .button { display: inline-block; padding: 12px 24px; background: #0284c7; color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; }
-            .warning { background: #fef2f2; border-left: 4px solid #ef4444; padding: 15px; margin: 15px 0; }
-            .footer { color: #6b7280; font-size: 12px; margin-top: 20px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h2>Password Reset Request 🔐</h2>
-            </div>
-            <div class="content">
-              <p>Hi ${userName},</p>
-              <p>We received a request to reset your password. Click the button below to set a new password.</p>
-              
-              <a href="${process.env.FRONTEND_URL}/reset-password?token=${resetToken}" class="button">
-                Reset Password
-              </a>
-
-              <div class="warning">
-                <strong>⚠️ Important:</strong> This link expires in 15 minutes. If you didn't request this, please ignore this email.
-              </div>
-
-              <p style="color: #6b7280; font-size: 14px;">
-                For security, never share this link with anyone.
               </p>
 
               <div class="footer">
@@ -256,15 +163,6 @@ async function sendEmail(templateName, templateData) {
   }
 }
 
-// Backward-compatible helpers used by current routes.
-async function sendVerificationEmail(email, token, userName = 'there') {
-  return sendEmail('verifyEmail', { email, token, userName });
-}
-
-async function sendPasswordResetEmail(email, resetToken, userName = 'there') {
-  return sendEmail('passwordReset', { email, userName, resetToken });
-}
-
 async function sendPaymentConfirmation(email, user, amount, credits) {
   return sendEmail('paymentConfirmation', {
     email,
@@ -277,7 +175,5 @@ async function sendPaymentConfirmation(email, user, amount, credits) {
 module.exports = {
   sendEmail,
   emailTemplates,
-  sendVerificationEmail,
-  sendPasswordResetEmail,
   sendPaymentConfirmation
 };

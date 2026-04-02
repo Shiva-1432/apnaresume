@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import axios from 'axios';
+import { useAuth } from '@clerk/nextjs';
 import StatusMessage from '@/components/ui/StatusMessage';
+import { API_BASE_URL } from '@/lib/apiBaseUrl';
 
 type ResumeVersion = {
   _id: string;
@@ -15,6 +17,7 @@ type ResumeVersion = {
 };
 
 export default function ResumeVersionManager({ resumes }: { resumes: ResumeVersion[] }) {
+  const { getToken } = useAuth();
   const [targetRole, setTargetRole] = useState('');
   const [baseResumeId, setBaseResumeId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -47,9 +50,12 @@ export default function ResumeVersionManager({ resumes }: { resumes: ResumeVersi
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication required');
+      }
       const response = await axios.post<{ version: ResumeVersion }>(
-        `${process.env.NEXT_PUBLIC_API_URL}/resume-versions/create-role-version`,
+        `${API_BASE_URL}/resume-versions/create-role-version`,
         {
           base_resume_id: baseResumeId,
           target_role: targetRole

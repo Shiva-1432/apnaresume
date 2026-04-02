@@ -1,67 +1,71 @@
 export default function PrivacyPolicy() {
   return (
-    <div className="max-w-4xl mx-auto px-6 py-12">
-      <h1 className="text-4xl font-bold mb-8">Privacy Policy</h1>
+    <div className="min-h-screen bg-mesh py-20 px-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-glass p-12 md:p-20 rounded-[3.5rem] shadow-2xl border border-white/40 backdrop-blur-3xl motion-fade-up">
+          <h1 className="text-5xl font-black text-neutral-900 tracking-tight mb-12 border-b border-white/20 pb-8">Privacy Policy</h1>
 
-      <section className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold mb-3">1. Introduction</h2>
-          <p className="text-gray-700">
-            ApnaResume (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) operates the ApnaResume platform. This Privacy
-            Policy explains how we collect, use, and protect your personal data.
-          </p>
+          <section className="space-y-12">
+            {[
+              { 
+                id: '01', 
+                title: 'Overview', 
+                content: 'ApnaResume ("we", "us", or "our") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and protect your personal data.' 
+              },
+              { 
+                id: '02', 
+                title: 'Data We Collect', 
+                list: [
+                  { label: 'Account Info', text: 'Name, email address, and authentication details.' },
+                  { label: 'Resume Data', text: 'Uploaded resumes and AI-generated analysis results.' },
+                  { label: 'Usage Data', text: 'Device/browser info and how you interact with the platform.' }
+                ] 
+              },
+              { 
+                id: '03', 
+                title: 'How We Use Your Data', 
+                list: [
+                  { label: 'Functionality', text: 'Powering resume analysis and job role matching.' },
+                  { label: 'Improvement', text: 'Improving product reliability and AI model accuracy.' },
+                  { label: 'Security', text: 'Managing billing and keeping your account secure.' }
+                ] 
+              },
+              { 
+                id: '04', 
+                title: 'Data Security', 
+                content: 'We use industry-standard TLS encryption and secure storage. While we take every precaution, no platform can guarantee 100% security.' 
+              },
+              { 
+                id: '05', 
+                title: 'Your Rights / GDPR', 
+                content: 'You have full control over your data. You can export or permanently delete all your information from your Dashboard Settings at any time.' 
+              }
+            ].map((sect) => (
+              <div key={sect.id} className="relative pl-12">
+                <div className="absolute left-0 top-0 text-xs font-black text-indigo-600/40 tracking-widest">{sect.id}</div>
+                <h2 className="text-2xl font-black text-neutral-900 mb-4 uppercase tracking-widest">{sect.title}</h2>
+                {sect.content && <p className="text-neutral-600 font-bold leading-relaxed">{sect.content}</p>}
+                {sect.list && (
+                  <ul className="space-y-4">
+                    {sect.list.map((item, idx) => (
+                      <li key={idx} className="flex gap-3">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 mt-2 shrink-0" />
+                        <p className="text-neutral-600 font-bold leading-relaxed">
+                          <span className="text-neutral-900 font-black">{item.label}:</span> {item.text}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </section>
+
+          <div className="mt-20 pt-10 border-t border-white/20 flex justify-between items-center text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">
+            <span>Last Updated: March 2026</span>
+          </div>
         </div>
-
-        <div>
-          <h2 className="text-2xl font-bold mb-3">2. Information We Collect</h2>
-          <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
-            <li><strong>Account Data:</strong> Name, email address, and authentication data.</li>
-            <li><strong>Resume Data:</strong> Uploaded resumes and analysis outputs.</li>
-            <li><strong>Usage Data:</strong> Device/browser metadata and interaction logs.</li>
-            <li><strong>Payment Data:</strong> Transaction metadata from payment processors.</li>
-          </ul>
-        </div>
-
-        <div>
-          <h2 className="text-2xl font-bold mb-3">3. How We Use Data</h2>
-          <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
-            <li>Provide resume analysis and related features.</li>
-            <li>Improve product quality and reliability.</li>
-            <li>Support billing, fraud prevention, and account security.</li>
-            <li>Respond to support and legal requests.</li>
-          </ul>
-        </div>
-
-        <div>
-          <h2 className="text-2xl font-bold mb-3">4. Data Security</h2>
-          <p className="text-gray-700">
-            We use industry-standard safeguards to protect your information, but no online system
-            can guarantee absolute security.
-          </p>
-        </div>
-
-        <div>
-          <h2 className="text-2xl font-bold mb-3">5. Your GDPR Rights</h2>
-          <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
-            <li>Access and export your personal data.</li>
-            <li>Correct inaccurate information.</li>
-            <li>Request deletion of your account data.</li>
-          </ul>
-          <p className="text-gray-700 mt-3">
-            You can exercise these rights from your account settings or by contacting support.
-          </p>
-        </div>
-
-        <div>
-          <h2 className="text-2xl font-bold mb-3">6. Policy Updates</h2>
-          <p className="text-gray-700">
-            We may revise this policy as the service evolves. The latest version is always
-            published on this page.
-          </p>
-        </div>
-      </section>
-
-      <p className="text-gray-500 text-sm mt-12">Last updated: March 24, 2026</p>
+      </div>
     </div>
   );
 }

@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import axios from 'axios';
+import { useAuth } from '@clerk/nextjs';
+import { API_BASE_URL } from '@/lib/apiBaseUrl';
 
 type SkillGapItem = {
   skill: string;
@@ -21,6 +23,7 @@ type SkillGapResponse = {
 };
 
 export default function SkillGapAnalyzer() {
+  const { getToken } = useAuth();
   const [targetRole, setTargetRole] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [gaps, setGaps] = useState<SkillGapResponse | null>(null);
@@ -59,9 +62,12 @@ export default function SkillGapAnalyzer() {
     setError('');
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication required');
+      }
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/skill-gap/analyze-skill-gaps`,
+        `${API_BASE_URL}/skill-gap/analyze-skill-gaps`,
         {
           target_role: targetRole.trim(),
           job_description: jobDescription.trim()

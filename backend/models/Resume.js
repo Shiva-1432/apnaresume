@@ -27,6 +27,21 @@ const resumeSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+
+  is_deleted: {
+    type: Boolean,
+    default: false
+  },
+
+  deleted_at: {
+    type: Date,
+    default: null
+  },
+
+  updated_at: {
+    type: Date,
+    default: Date.now
+  },
   
   parsing_confidence: {
     type: String,

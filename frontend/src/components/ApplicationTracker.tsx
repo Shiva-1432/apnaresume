@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
+import { useAuth } from '@clerk/nextjs';
+import { API_BASE_URL } from '@/lib/apiBaseUrl';
 import { requestWithRetry } from '@/lib/http';
 
 type Application = {
@@ -23,23 +25,28 @@ type Stats = {
 };
 
 export default function ApplicationTracker() {
+  const { getToken } = useAuth();
   const [applications, setApplications] = useState<Application[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const getAuthHeaders = useCallback(() => {
-    const token = localStorage.getItem('auth_token');
+  const getAuthHeaders = useCallback(async () => {
+    const token = await getToken();
+    if (!token) {
+      throw new Error('Authentication required');
+    }
     return {
       Authorization: `Bearer ${token}`
     };
-  }, []);
+  }, [getToken]);
 
   const fetchApplications = useCallback(async () => {
     try {
+      const headers = await getAuthHeaders();
       const response = await requestWithRetry(() => axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/job-applications/list`,
-        { headers: getAuthHeaders() }
+        `${API_BASE_URL}/job-applications/list`,
+        { headers }
       ));
       setApplications(response.data.applications || []);
     } catch (err) {
@@ -52,9 +59,10 @@ export default function ApplicationTracker() {
 
   const fetchStats = useCallback(async () => {
     try {
+      const headers = await getAuthHeaders();
       const response = await requestWithRetry(() => axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/job-applications/application-stats`,
-        { headers: getAuthHeaders() }
+        `${API_BASE_URL}/job-applications/application-stats`,
+        { headers }
       ));
       setStats(response.data);
     } catch (err) {
@@ -78,10 +86,11 @@ export default function ApplicationTracker() {
 
   const updateStatus = async (id: string, status: string) => {
     try {
+      const headers = await getAuthHeaders();
       await axios.patch(
-        `${process.env.NEXT_PUBLIC_API_URL}/job-applications/${id}/status`,
+        `${API_BASE_URL}/job-applications/${id}/status`,
         { status },
-        { headers: getAuthHeaders() }
+        { headers }
       );
 
       setApplications((prev) => prev.map((app) => (app._id === id ? { ...app, status: status as Application['status'] } : app)));

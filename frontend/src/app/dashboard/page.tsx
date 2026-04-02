@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
 import Button from '@/components/ui/Button';
 import ATSScoreCard from '@/components/ui/ATSScoreCard';
 import JobMatchCard from '@/components/ui/JobMatchCard';
 import SuggestionCard from '@/components/ui/SuggestionCard';
 import { useAuth } from '@/hooks/useAuth';
-import { clearStoredSession, getStoredSession } from '@/lib/session';
 
 type DashboardUser = {
   id?: string;
@@ -29,14 +29,7 @@ type LatestAnalysis = {
 };
 
 export default function Dashboard() {
-  const [user] = useState<DashboardUser | null>(() => {
-    if (typeof window === 'undefined') {
-      return null;
-    }
-
-    const { user: sessionUser } = getStoredSession();
-    return sessionUser as DashboardUser | null;
-  });
+  const { isLoaded, isSignedIn, user } = useUser();
   const [latestAnalysis] = useState<LatestAnalysis | null>({
     ats_score: 78,
     score_breakdown: {
@@ -49,53 +42,66 @@ export default function Dashboard() {
   const router = useRouter();
   const { logout } = useAuth();
 
-  const clearSessionAndRedirect = useCallback((reason: string) => {
-    clearStoredSession();
-    router.push(`/login?reason=${reason}`);
-  }, [router]);
-
   const handleLogout = useCallback(async () => {
     await logout();
   }, [logout]);
 
   useEffect(() => {
-    const { token, user: sessionUser } = getStoredSession();
-    if (!token) {
-      clearSessionAndRedirect('session-expired');
-      return;
+    if (isLoaded && !isSignedIn) {
+      router.push('/sign-in?reason=unauthorized');
     }
+  }, [isLoaded, isSignedIn, router]);
 
-    if (!sessionUser) {
-      clearSessionAndRedirect('unauthorized');
-    }
-  }, [clearSessionAndRedirect]);
+  if (!isLoaded || !isSignedIn || !user) {
+    return <div className="min-h-screen flex items-center justify-center text-neutral-600">Loading dashboard...</div>;
+  }
 
-  if (!user) return <div className="min-h-screen flex items-center justify-center text-neutral-600">Loading dashboard...</div>;
+  const dashboardUser: DashboardUser = {
+    id: user.id,
+    email: user.primaryEmailAddress?.emailAddress,
+    name: user.fullName || user.firstName || 'User',
+    credits: 0
+  };
 
   return (
     <div className="min-h-screen bg-linear-to-br from-neutral-50 to-primary-50">
       <div className="bg-white border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="flex justify-between items-start motion-fade-up">
+          <div className="flex flex-col gap-6 lg:flex-row lg:justify-between lg:items-end motion-fade-up">
             <div>
               <h1 className="text-4xl font-extrabold text-neutral-900">
-                Welcome back, {user.name || 'User'}! 👋
+                Welcome back 👋
               </h1>
               <p className="text-neutral-600 mt-2">
                 Keep your profile sharp and interview-ready.
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-semibold text-neutral-600">
-                Available Credits
-              </p>
-              <p className="text-4xl font-extrabold text-primary-600">
-                {user.credits ?? 0}
-              </p>
-              <div className="mt-3">
-                <Button variant="outline" size="sm" onClick={handleLogout}>
-                  Logout
-                </Button>
+            <div className="w-full lg:w-auto rounded-2xl border border-neutral-200 bg-neutral-50/80 px-5 py-4 shadow-sm">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">
+                    Account Details
+                  </p>
+                  <h2 className="text-2xl font-extrabold text-neutral-900 mt-1">
+                    {dashboardUser.name || 'User'}
+                  </h2>
+                  <p className="text-sm text-neutral-600 mt-1">
+                    {dashboardUser.email || 'No email available'}
+                  </p>
+                </div>
+                <div className="text-left sm:text-right">
+                  <p className="text-sm font-semibold text-neutral-600">
+                    Available Credits
+                  </p>
+                  <p className="text-4xl font-extrabold text-primary-600">
+                    {dashboardUser.credits ?? 0}
+                  </p>
+                  <div className="mt-3">
+                    <Button variant="outline" size="sm" onClick={handleLogout}>
+                      Logout
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -151,7 +157,7 @@ export default function Dashboard() {
               size="lg"
               fullWidth
               icon="📄"
-              onClick={() => router.push('/dashboard?tab=analyze')}
+              onClick={() => router.push('/upload#upload-area')}
             >
               Upload Resume
             </Button>

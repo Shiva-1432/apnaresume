@@ -1,7 +1,7 @@
-
 const express = require('express');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { getGeminiModel, generateContentWithRetry } = require('../utils/ai');
 const { authenticateToken } = require('../middleware/auth');
+const { checkCredits } = require('../middleware/creditCheck');
 
 const router = express.Router();
 
@@ -52,7 +52,7 @@ const fresherTemplates = {
   }
 };
 
-router.post('/fresher-resume-builder', authenticateToken, async (req, res) => {
+router.post('/fresher-resume-builder', authenticateToken, checkCredits(1), async (req, res) => {
   try {
     const { role } = req.body;
 
@@ -84,9 +84,9 @@ Return as JSON:
   }
 }`;
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-    const guidance = await model.generateContent(prompt);
+    // Use centralized AI model
+    const model = getGeminiModel('gemini-pro');
+    const guidance = await generateContentWithRetry(model, prompt);
     const guidanceText = guidance.response.text();
     const jsonMatch = guidanceText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -94,10 +94,16 @@ Return as JSON:
     }
     const guideData = JSON.parse(jsonMatch[0]);
 
+    // Deduct credits
+    const user = req.fullUser;
+    user.credits -= 1;
+    await user.save();
+
     return res.json({
       success: true,
       template: fresherTemplate,
       guidance: guideData,
+      credits_remaining: user.credits,
       message: 'Fresher-focused resume template loaded'
     });
   } catch (error) {

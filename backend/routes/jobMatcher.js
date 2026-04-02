@@ -1,15 +1,15 @@
 const express = require('express');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const mongoose = require('mongoose');
 const JobMatch = require('../models/JobMatch');
 const Resume = require('../models/Resume');
 const User = require('../models/User');
 const { authenticateToken } = require('../middleware/auth');
 const { createFeatureQuota } = require('../middleware/featureQuota');
-const { generateContentWithRetry } = require('../utils/ai');
+const { getGeminiModel, generateContentWithRetry } = require('../utils/ai');
+const { checkCredits } = require('../middleware/creditCheck');
+
 const router = express.Router();
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const jobMatcherQuota = createFeatureQuota('job_match', {
   free: {
     hourlyLimit: Number(process.env.JOB_MATCH_FREE_LIMIT_PER_HOUR || 5),
@@ -22,7 +22,7 @@ const jobMatcherQuota = createFeatureQuota('job_match', {
 });
 
 // Main endpoint: Match resume to job
-router.post('/match-resume-to-job', authenticateToken, jobMatcherQuota, async (req, res) => {
+router.post('/match-resume-to-job', authenticateToken, jobMatcherQuota, checkCredits(3), async (req, res) => {
   try {
     const { job_description, resume_id, job_title, company } = req.body;
     const normalizedJobDescription = String(job_description || '').trim();
@@ -48,21 +48,18 @@ router.post('/match-resume-to-job', authenticateToken, jobMatcherQuota, async (r
     }
 
     // Get user's resume
-    const resume = await Resume.findById(normalizedResumeId);
+    const resume = await Resume.findOne({
+      _id: normalizedResumeId,
+      user_id: req.user.user_id,
+      is_deleted: { $ne: true }
+    });
 
-    if (!resume || resume.user_id.toString() !== req.user.user_id.toString()) {
+    if (!resume) {
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    // Deduct credits (3 credits for job matching)
-    const user = await User.findById(req.user.user_id);
-    if (user.credits < 3) {
-      return res.status(402).json({
-        error: 'Insufficient credits',
-        credits_needed: 3,
-        credits_available: user.credits
-      });
-    }
+    // User already fetched and validated by checkCredits middleware (req.fullUser)
+    const user = req.fullUser;
 
     console.log('Analyzing job...');
 
@@ -86,7 +83,8 @@ Return ONLY valid JSON (no markdown, no extra text):
   "location": "if mentioned or null"
 }`;
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // Get model from centralized provider
+    const model = getGeminiModel('gemini-1.5-flash');
 
     let jobData;
     try {

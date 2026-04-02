@@ -1,9 +1,11 @@
-const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const mongoose = require('mongoose');
+const { verifyToken } = require('@clerk/backend');
 const User = require('../models/User');
 
-function getJwtSecret() {
-  const secret = process.env.JWT_SECRET;
-  if (!secret || secret.length < 32 || secret.includes('your_super_secret_key')) {
+function getClerkSecret() {
+  const secret = process.env.CLERK_SECRET_KEY;
+  if (!secret || typeof secret !== 'string' || !secret.startsWith('sk_')) {
     return null;
   }
 
@@ -30,37 +32,60 @@ async function authenticateToken(req, res, next) {
     return res.status(401).json({ error: 'No token provided' });
   }
 
-  const jwtSecret = getJwtSecret();
-  if (!jwtSecret) {
+  const clerkSecret = getClerkSecret();
+  if (!clerkSecret) {
     return res.status(500).json({ error: 'Server authentication config missing' });
   }
 
   try {
-    const decoded = jwt.verify(token, jwtSecret);
-    if (!decoded.user_id || !decoded.sid) {
-      return res.status(401).json({ error: 'Invalid session token' });
+    const claims = await verifyToken(token, { secretKey: clerkSecret });
+    const clerkUserId = claims?.sub;
+    if (!clerkUserId) {
+      return res.status(401).json({ error: 'Invalid clerk token' });
     }
 
-    const user = await User.findById(decoded.user_id).select('sessions account_locked locked_until');
+    let user = await User.findOne({ clerk_user_id: clerkUserId });
+
+    const claimEmail = String(claims?.email || claims?.email_address || '').trim().toLowerCase();
+    if (!user && claimEmail) {
+      user = await User.findOne({ email: claimEmail });
+      if (user && !user.clerk_user_id) {
+        user.clerk_user_id = clerkUserId;
+        await user.save();
+      }
+    }
+
     if (!user) {
-      return res.status(401).json({ error: 'User not found' });
+      const email = claimEmail || `${clerkUserId}@clerk.local`;
+      const name = String(claims?.name || claims?.given_name || email.split('@')[0] || 'User');
+
+      user = new User({
+        _id: new mongoose.Types.ObjectId(),
+        clerk_user_id: clerkUserId,
+        email,
+        name,
+        password: crypto.randomBytes(16).toString('hex'),
+        verification: {
+          email_verified: true
+        }
+      });
+
+      await user.save();
     }
 
     if (user.account_locked && user.locked_until && user.locked_until > new Date()) {
       return res.status(423).json({ error: 'Account temporarily locked' });
     }
 
-    const session = user.sessions.find((s) => s.session_id === decoded.sid && s.is_active);
-    if (!session) {
-      return res.status(401).json({ error: 'Session expired or revoked' });
-    }
-
-    session.last_activity_at = new Date();
-    await user.save();
-
-    req.user = decoded;
+    req.user = {
+      user_id: user._id,
+      email: user.email,
+      sid: `clerk:${clerkUserId}`,
+      auth_provider: 'clerk',
+      clerk_user_id: clerkUserId
+    };
     req.token = token;
-    req.sessionId = decoded.sid;
+    req.sessionId = req.user.sid;
     next();
   } catch {
     return res.status(403).json({ error: 'Invalid token' });
@@ -69,6 +94,5 @@ async function authenticateToken(req, res, next) {
 
 module.exports = {
   authenticateToken,
-  extractToken,
-  getJwtSecret
+  extractToken
 };

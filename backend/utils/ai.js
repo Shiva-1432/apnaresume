@@ -1,3 +1,5 @@
+const { getGenAI, getGeminiModel } = require('./gemini');
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -45,6 +47,8 @@ async function generateContentWithRetry(model, prompt, options = {}) {
 }
 
 module.exports = {
+  getGenAI,
+  getGeminiModel,
   generateContentWithRetry,
   isRetryableAiError
 };
