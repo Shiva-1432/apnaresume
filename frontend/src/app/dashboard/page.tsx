@@ -1,13 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@clerk/nextjs';
+import { useAuth as useClerkAuth, useClerk, useUser } from '@clerk/nextjs';
 import Button from '@/components/ui/Button';
 import ATSScoreCard from '@/components/ui/ATSScoreCard';
 import JobMatchCard from '@/components/ui/JobMatchCard';
 import SuggestionCard from '@/components/ui/SuggestionCard';
-import { useAuth } from '@/hooks/useAuth';
 
 type DashboardUser = {
   id?: string;
@@ -29,7 +28,10 @@ type LatestAnalysis = {
 };
 
 export default function Dashboard() {
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { isLoaded: isAuthLoaded, isSignedIn } = useClerkAuth();
+  const { user } = useUser();
+  const [authLoadTimedOut, setAuthLoadTimedOut] = useState(false);
+  const hasRedirectedRef = useRef(false);
   const [latestAnalysis] = useState<LatestAnalysis | null>({
     ats_score: 78,
     score_breakdown: {
@@ -40,31 +42,74 @@ export default function Dashboard() {
     }
   });
   const router = useRouter();
-  const { logout } = useAuth();
+  const { signOut } = useClerk();
 
   const handleLogout = useCallback(async () => {
-    await logout();
-  }, [logout]);
+    try {
+      await signOut({ redirectUrl: '/sign-in' });
+      router.replace('/sign-in');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      router.replace('/sign-in');
+    }
+  }, [router, signOut]);
 
   useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      router.push('/sign-in?reason=unauthorized');
+    if (hasRedirectedRef.current) {
+      return;
     }
-  }, [isLoaded, isSignedIn, router]);
 
-  if (!isLoaded || !isSignedIn || !user) {
-    return <div className="min-h-screen flex items-center justify-center text-neutral-600">Loading dashboard...</div>;
+    if (isAuthLoaded && !isSignedIn) {
+      hasRedirectedRef.current = true;
+      router.replace('/sign-in?reason=unauthorized');
+      return;
+    }
+
+    if (!isAuthLoaded && authLoadTimedOut) {
+      hasRedirectedRef.current = true;
+      router.replace('/sign-in?reason=auth_timeout&redirect_url=/dashboard');
+    }
+  }, [isAuthLoaded, isSignedIn, authLoadTimedOut, router]);
+
+  useEffect(() => {
+    if (isAuthLoaded) {
+      setAuthLoadTimedOut(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setAuthLoadTimedOut(true);
+    }, 8000);
+
+    return () => window.clearTimeout(timer);
+  }, [isAuthLoaded]);
+
+  if (!isAuthLoaded) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-neutral-600 px-6 text-center">
+        <p>Loading dashboard...</p>
+        {authLoadTimedOut ? (
+          <p className="text-sm text-neutral-500">
+            Authentication is taking longer than expected. Try refreshing the page.
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (!isSignedIn || !user) {
+    return null;
   }
 
   const dashboardUser: DashboardUser = {
-    id: user.id,
-    email: user.primaryEmailAddress?.emailAddress,
-    name: user.fullName || user.firstName || 'User',
+    id: user?.id,
+    email: user?.primaryEmailAddress?.emailAddress,
+    name: user?.fullName || user?.firstName || 'User',
     credits: 0
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-neutral-50 to-primary-50">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-primary-50">
       <div className="bg-white border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:justify-between lg:items-end motion-fade-up">

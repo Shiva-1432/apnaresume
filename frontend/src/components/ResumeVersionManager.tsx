@@ -155,7 +155,7 @@ export default function ResumeVersionManager({ resumes }: { resumes: ResumeVersi
               <button
                 key={version._id}
                 onClick={() => setSelectedVersion(version)}
-                className="w-full p-4 bg-linear-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-lg hover:shadow-lg transition text-left"
+                className="w-full p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-lg hover:shadow-lg transition text-left"
               >
                 <div className="flex justify-between items-start">
                   <div>

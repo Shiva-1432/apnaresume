@@ -7,3 +7,5 @@ export * from './useAdminQueue';
 export * from './useAdminFlags';
 export * from './useAdminBilling';
 export * from './useAdminAnalytics';
+export * from './useAdminResumes';
+export * from './useAdminResume';

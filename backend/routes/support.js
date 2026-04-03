@@ -120,6 +120,26 @@ router.post('/create-ticket', authenticateToken, supportCreateLimiter, createTic
 // Backward-compatible alias for existing frontend integrations.
 router.post('/tickets', authenticateToken, supportCreateLimiter, createTicket);
 
+router.get('/tickets', authenticateToken, async (req, res) => {
+  try {
+    const tickets = await SupportTicket.find({ user_id: req.user.user_id })
+      .sort({ created_at: -1 })
+      .select('_id ticket_number subject category description status priority created_at updated_at responses attachments');
+
+    return res.json({
+      tickets
+    });
+  } catch (error) {
+    console.error('Support tickets list error:', error);
+    return res.status(500).json({
+      error: {
+        message: 'Failed to fetch support tickets',
+        code: 'INTERNAL_ERROR'
+      }
+    });
+  }
+});
+
 router.get('/my-tickets', authenticateToken, async (req, res) => {
   try {
     const tickets = await SupportTicket.find({ user_id: req.user.user_id })

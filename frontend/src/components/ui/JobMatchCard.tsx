@@ -37,7 +37,7 @@ export default function JobMatchCard({
     <div
       onClick={onClick}
       className={`
-        bg-linear-to-br ${colorMap[matchColor]}
+        bg-gradient-to-br ${colorMap[matchColor]}
         border rounded-lg p-6 shadow-md hover:shadow-lg
         transition-all duration-200 cursor-pointer hover-lift
       `}

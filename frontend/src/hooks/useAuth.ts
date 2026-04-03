@@ -10,8 +10,8 @@ export function useAuth() {
   const { signOut } = useClerk();
   const { isLoaded, isSignedIn, user } = useUser();
 
-  const redirectAfterSignOut = () => {
-    router.push('/');
+  const redirectAfterSignOut = (path = '/') => {
+    router.replace(path);
   };
 
   useEffect(() => {
@@ -30,17 +30,17 @@ export function useAuth() {
     Sentry.setUser(null);
   }, [isLoaded, isSignedIn, user]);
 
-  const logout = async () => {
+  const logout = async (redirectTo = '/') => {
     try {
       Sentry.setUser(null);
-      await signOut({ redirectUrl: '/' });
+      await signOut({ redirectUrl: redirectTo });
       return;
     } catch (error) {
       console.error('Logout failed:', error);
     }
 
     Sentry.setUser(null);
-    redirectAfterSignOut();
+    redirectAfterSignOut(redirectTo);
   };
 
   return { logout, redirectAfterSignOut };

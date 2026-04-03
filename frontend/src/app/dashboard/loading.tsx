@@ -3,7 +3,7 @@ import SkeletonCard from '@/components/ui/SkeletonCard';
 
 export default function DashboardLoading() {
   return (
-    <div className="min-h-screen bg-linear-to-br from-neutral-50 to-primary-50">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-primary-50">
       <div className="bg-white border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
           <div className="space-y-3">

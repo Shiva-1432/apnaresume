@@ -11,6 +11,36 @@ const resumeSchema = new mongoose.Schema({
   
   file_name: String,
   version_name: String,
+  format: {
+    type: String,
+    enum: ['pdf', 'docx'],
+    default: 'pdf'
+  },
+  pages: {
+    type: Number,
+    default: 1
+  },
+  score: {
+    type: Number,
+    default: 0
+  },
+  starred: {
+    type: Boolean,
+    default: false
+  },
+  status: {
+    type: String,
+    enum: ['active', 'deleted', 'analyzing'],
+    default: 'active'
+  },
+  admin_notes: {
+    type: String,
+    default: ''
+  },
+  analysis_error: {
+    type: String,
+    default: null
+  },
   extracted_text: {
     type: String,
     required: true

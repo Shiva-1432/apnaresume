@@ -7,15 +7,24 @@ const navItems = [
   { label: "Overview", href: "/admin" },
   { label: "Users", href: "/admin/users" },
   { label: "Resumes", href: "/admin/resumes" },
-  { label: "Support Tickets", href: "/admin/support-tickets" },
-  { label: "Analysis Queue", href: "/admin/analysis-queue" },
+  { label: "Support Tickets", href: "/admin/tickets" },
+  { label: "Analysis Queue", href: "/admin/queue" },
   { label: "Analytics", href: "/admin/analytics" },
-  { label: "Feature Flags", href: "/admin/feature-flags" },
+  { label: "Audit Log", href: "/admin/audit" },
+  { label: "Feature Flags", href: "/admin/flags" },
   { label: "Billing", href: "/admin/billing" },
 ];
 
 export default function AdminSidebar() {
   const pathname = usePathname();
+
+  const isActiveLink = (href: string) => {
+    if (href === "/admin") {
+      return pathname === "/admin";
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
 
   return (
     <aside className="hidden md:flex md:w-72 md:flex-col bg-slate-950 border-r border-slate-800">
@@ -28,7 +37,7 @@ export default function AdminSidebar() {
 
       <nav className="p-4 space-y-2">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = isActiveLink(item.href);
           return (
             <Link
               key={item.label}

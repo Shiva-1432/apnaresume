@@ -11,7 +11,7 @@ export default function QuickActions({ onAnalyze, onMatch, onTrack }: QuickActio
     <div className="grid md:grid-cols-3 gap-4">
       <button
         onClick={onAnalyze}
-        className="p-6 bg-linear-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg hover:shadow-lg transition"
+        className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg hover:shadow-lg transition"
       >
         <h3 className="text-2xl font-bold text-blue-600 mb-2">📄</h3>
         <p className="font-bold text-gray-900">Upload & Analyze Resume</p>
@@ -20,7 +20,7 @@ export default function QuickActions({ onAnalyze, onMatch, onTrack }: QuickActio
 
       <button
         onClick={onMatch}
-        className="p-6 bg-linear-to-br from-purple-50 to-purple-100 border-2 border-purple-300 rounded-lg hover:shadow-lg transition"
+        className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-300 rounded-lg hover:shadow-lg transition"
       >
         <h3 className="text-2xl font-bold text-purple-600 mb-2">🎯</h3>
         <p className="font-bold text-gray-900">Match to Job</p>
@@ -29,7 +29,7 @@ export default function QuickActions({ onAnalyze, onMatch, onTrack }: QuickActio
 
       <button
         onClick={onTrack}
-        className="p-6 bg-linear-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-lg hover:shadow-lg transition"
+        className="p-6 bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-lg hover:shadow-lg transition"
       >
         <h3 className="text-2xl font-bold text-green-600 mb-2">💼</h3>
         <p className="font-bold text-gray-900">Track Applications</p>

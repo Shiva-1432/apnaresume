@@ -37,6 +37,43 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 20 // Free tier
   },
+
+  preferences: {
+    display_name: {
+      type: String,
+      default: ''
+    },
+    email_notifications: {
+      type: Boolean,
+      default: true
+    },
+    weekly_digest: {
+      type: Boolean,
+      default: true
+    },
+    tips: {
+      type: Boolean,
+      default: true
+    }
+  },
+
+  subscription: {
+    status: {
+      type: String,
+      enum: ['active', 'cancelled', 'trial'],
+      default: 'trial'
+    },
+    plan: {
+      type: String,
+      default: 'free'
+    },
+    amount: {
+      type: Number,
+      default: 0
+    },
+    next_billing_at: Date,
+    cancelled_at: Date
+  },
   
   // Verification
   verification: {

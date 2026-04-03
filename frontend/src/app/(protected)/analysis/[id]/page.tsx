@@ -86,7 +86,7 @@ export default async function AnalysisDetailPage({
   const resume = data?.resume;
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-neutral-50 to-primary-50 px-4 py-8 lg:py-12">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-primary-50 px-4 py-8 lg:py-12">
       <div className="mx-auto max-w-6xl space-y-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <Link

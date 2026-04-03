@@ -96,6 +96,9 @@ function registerRoutes(app) {
   const gdprRoutes = require('./routes/gdpr');
   const monitoringRoutes = require('./routes/monitoring');
   const adminRoutes = require('./routes/admin');
+  const userRoutes = require('./routes/users');
+  const flagsRoutes = require('./routes/flags');
+  const historyRoutes = require('./routes/history');
 
   app.use('/api/auth', authRoutes);
   app.use('/api/analysis', analysisRoutes);
@@ -109,6 +112,9 @@ function registerRoutes(app) {
   app.use('/api/gdpr', gdprRoutes);
   app.use('/api/monitoring', monitoringRoutes);
   app.use('/api/admin', adminRoutes);
+  app.use('/api/users', userRoutes);
+  app.use('/api/flags', flagsRoutes);
+  app.use('/api/history', historyRoutes);
 
   app.get('/api/health', (req, res) => {
     const isDbConnected = mongoose.connection.readyState === 1;

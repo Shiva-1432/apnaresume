@@ -116,7 +116,7 @@ export default function ATSScoreCard({
               {/* Progress bar */}
               <div className="w-full bg-primary-200 rounded-full h-2 overflow-hidden">
                 <div
-                  className="bg-linear-to-r from-primary-500 to-primary-600 h-full transition-all duration-500"
+                  className="bg-gradient-to-r from-primary-500 to-primary-600 h-full transition-all duration-500"
                   style={{ width: `${value}%` }}
                 />
               </div>

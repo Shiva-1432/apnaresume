@@ -84,6 +84,7 @@ async function authenticateToken(req, res, next) {
       auth_provider: 'clerk',
       clerk_user_id: clerkUserId
     };
+    req.authClaims = claims;
     req.token = token;
     req.sessionId = req.user.sid;
     next();
